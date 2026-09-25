@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model tbl_alunos {
+  id_aluno        Int               @id @default(autoincrement())
+  matricula_aluno String            @db.VarChar(50)
+  nome_aluno      String            @db.VarChar(255)
+  serie_aluno     String            @db.VarChar(20)
+  turma_aluno     String?           @db.VarChar(20)
+  id_instituicao  Int
+  status_aluno    Boolean           @default(true)
+  data_cadastro   DateTime          @default(now()) @db.DateTime(0)
+  tbl_instituicao tbl_instituicao   @relation(fields: [id_instituicao], references: [id_instituicao], map: "fk_alunos_instituicao")
+  tbl_emprestimos tbl_emprestimos[]
+
+  @@unique([matricula_aluno, id_instituicao], map: "uq_aluno_matricula_instituicao")
+  @@index([id_instituicao], map: "fk_alunos_instituicao")
+}
+
+model tbl_categorias {
+  id_categoria     Int             @id @default(autoincrement())
+  nome_categoria   String          @db.VarChar(255)
+  id_instituicao   Int
+  status_categoria Boolean         @default(true)
+  tbl_instituicao  tbl_instituicao @relation(fields: [id_instituicao], references: [id_instituicao], map: "fk_categorias_instituicao")
+  tbl_livros       tbl_livros[]
+
+  @@unique([nome_categoria, id_instituicao], map: "uq_categoria_instituicao")
+  @@index([id_instituicao], map: "fk_categorias_instituicao")
+}
+
+model tbl_emprestimos {
+  id_emprestimo           Int          @id @default(autoincrement())
+  id_aluno                Int
+  id_livro                Int
+  id_professor            Int
+  data_emprestimo         DateTime     @default(now()) @db.DateTime(0)
+  data_devolucao_prevista DateTime     @db.Date
+  data_devolucao_real     DateTime?    @db.Date
+  status_emprestimo       String       @default("ATIVO") @db.VarChar(20)
+  tbl_alunos              tbl_alunos   @relation(fields: [id_aluno], references: [id_aluno], map: "fk_emprestimos_aluno")
+  tbl_livros              tbl_livros   @relation(fields: [id_livro], references: [id_livro], map: "fk_emprestimos_livro")
+  tbl_usuarios            tbl_usuarios @relation(fields: [id_professor], references: [id_usuario], map: "fk_emprestimos_professor")
+
+  @@index([id_aluno], map: "fk_emprestimos_aluno")
+  @@index([id_livro], map: "fk_emprestimos_livro")
+  @@index([id_professor], map: "fk_emprestimos_professor")
+}
+
+model tbl_instituicao {
+  id_instituicao     Int              @id @default(autoincrement())
+  nome_instituicao   String           @db.VarChar(255)
+  email_instituicao  String           @unique(map: "email_instituicao") @db.VarChar(255)
+  status_instituicao Boolean          @default(true)
+  data_cadastro      DateTime         @default(now()) @db.DateTime(0)
+  tbl_alunos         tbl_alunos[]
+  tbl_categorias     tbl_categorias[]
+  tbl_livros         tbl_livros[]
+  tbl_usuarios       tbl_usuarios[]
+}
+
+model tbl_livros {
+  id_livro              Int               @id @default(autoincrement())
+  titulo_livro          String            @db.VarChar(255)
+  codigo_livro          String            @db.VarChar(50)
+  autor_livro           String?           @db.VarChar(255)
+  isbn                  String?           @db.VarChar(20)
+  id_categoria          Int?
+  id_instituicao        Int
+  quantidade_total      Int               @default(1)
+  quantidade_disponivel Int               @default(1)
+  status_livro          Boolean           @default(true)
+  data_cadastro         DateTime          @default(now()) @db.DateTime(0)
+  tbl_emprestimos       tbl_emprestimos[]
+  tbl_categorias        tbl_categorias?   @relation(fields: [id_categoria], references: [id_categoria], map: "fk_livros_categoria")
+  tbl_instituicao       tbl_instituicao   @relation(fields: [id_instituicao], references: [id_instituicao], map: "fk_livros_instituicao")
+
+  @@unique([codigo_livro, id_instituicao], map: "uq_livro_codigo_instituicao")
+  @@index([id_categoria], map: "fk_livros_categoria")
+  @@index([id_instituicao], map: "fk_livros_instituicao")
+}
+
+model tbl_usuarios {
+  id_usuario      Int               @id @default(autoincrement())
+  nome_usuario    String            @db.VarChar(255)
+  email_usuario   String            @db.VarChar(255)
+  senha_usuario   String            @db.VarChar(255)
+  tipo_usuario    String            @db.VarChar(20)
+  id_instituicao  Int
+  status_usuario  Boolean           @default(true)
+  data_cadastro   DateTime          @default(now()) @db.DateTime(0)
+  tbl_emprestimos tbl_emprestimos[]
+  tbl_instituicao tbl_instituicao   @relation(fields: [id_instituicao], references: [id_instituicao], map: "fk_usuarios_instituicao")
+
+  @@unique([email_usuario, id_instituicao], map: "uq_usuario_email_instituicao")
+  @@index([id_instituicao], map: "fk_usuarios_instituicao")
+}
