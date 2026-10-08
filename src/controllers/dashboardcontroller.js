@@ -56,19 +56,25 @@ const dashboard = async (req, res) => {
                     }
                 }),
 
+                // Empréstimos ativos de todos os professores da instituição.
                 prisma.tbl_emprestimos.count({
                     where: {
-                        id_professor: idProfessor,
-                        status_emprestimo: 'ATIVO'
+                        status_emprestimo: 'ATIVO',
+                        tbl_alunos: {
+                            is: { id_instituicao: idInstituicao }
+                        }
                     }
                 }),
 
+                // Atrasos de toda a instituição, independentemente de quem registrou o empréstimo.
                 prisma.tbl_emprestimos.count({
                     where: {
-                        id_professor: idProfessor,
                         status_emprestimo: 'ATIVO',
                         data_devolucao_prevista: {
                             lt: new Date()
+                        },
+                        tbl_alunos: {
+                            is: { id_instituicao: idInstituicao }
                         }
                     }
                 }),
@@ -83,9 +89,12 @@ const dashboard = async (req, res) => {
                     }
                 }),
 
+                // Atividades recentes compartilhadas por todos os professores da instituição.
                 prisma.tbl_emprestimos.findMany({
                     where: {
-                        id_professor: idProfessor
+                        tbl_alunos: {
+                            is: { id_instituicao: idInstituicao }
+                        }
                     },
                     orderBy: {
                         data_emprestimo: 'desc'
@@ -105,6 +114,11 @@ const dashboard = async (req, res) => {
                             select: {
                                 titulo_livro: true
                             }
+                        },
+                        tbl_usuarios: {
+                            select: {
+                                nome_usuario: true
+                            }
                         }
                     }
                 })
@@ -113,6 +127,12 @@ const dashboard = async (req, res) => {
         if (!usuario || !usuario.status_usuario) {
             return res.status(401).json({
                 erro: 'Usuário não encontrado ou inativo.'
+            });
+        }
+
+        if (usuario.id_instituicao !== idInstituicao) {
+            return res.status(403).json({
+                erro: 'Usuário não pertence à instituição autenticada.'
             });
         }
 
@@ -131,6 +151,7 @@ const dashboard = async (req, res) => {
                 id: emprestimo.id_emprestimo,
                 aluno: emprestimo.tbl_alunos.nome_aluno,
                 livro: emprestimo.tbl_livros.titulo_livro,
+                professor: emprestimo.tbl_usuarios.nome_usuario,
                 dataEmprestimo: emprestimo.data_emprestimo,
                 dataDevolucaoPrevista: emprestimo.data_devolucao_prevista,
                 status: atrasado ? 'ATRASADO' : emprestimo.status_emprestimo
