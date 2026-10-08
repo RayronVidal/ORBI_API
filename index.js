@@ -13,6 +13,7 @@ const authController = require('./src/controllers/authcontroller');
 const studentsRoutes = require('./src/routes/studentsRoutes');
 const dashboardRoutes = require('./src/routes/dashboardRoutes');
 const emprestimosRoutes = require('./src/routes/emprestimosRoutes');
+const livrosRoutes = require('./src/routes/livrosRoutes');
 
 app.get('/', (req, res) => {
     res.send('Servidor Orbi API está online!');
@@ -23,6 +24,7 @@ app.post('/login', authController.login);
 app.use('/api', dashboardRoutes);
 app.use('/api', emprestimosRoutes);
 app.use('/api', studentsRoutes);
+app.use('/api', livrosRoutes);
 
 app.listen(PORT, () => {
     console.log(`Servidor rodando em http://localhost:${PORT}`);
