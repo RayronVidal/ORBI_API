@@ -8,16 +8,19 @@ const login = async (req, res) => {
     }
 
     try {
-        const usuario = await authService.varificarLogin(email, senha);
+        const usuario = await authService.verificarLogin(email, senha);
 
         if (!usuario) {
-            return res.status(404).json({erro: "Usuario não encontrado."})
+            return res.status(401).json({erro: "Usuario não encontrado."})
         }
+
+        const { token, ...dadosUsuario } = usuario;
 
         return res.status(200).json({
             "mensagem" : "Usuario existe.",
-            "usuario" : usuario
-        })
+            "usuario" : dadosUsuario,
+            "token" : token
+        });
     }
 
     catch (error) {

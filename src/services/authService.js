@@ -1,37 +1,57 @@
-const { login } = require("../controllers/authcontroller");
-
+const prisma = require("../config/prisma");
+const bcrypt = require("bcryptjs");
 const jwt = require('jsonwebtoken');
+const { PrismaMariaDb } = require("@prisma/adapter-mariadb");
 
-const usuariosNoBanco = [
-    { id: 1, nome: "Rayron", email: "rayron@orbi.com", senha: "123" },
-    { id: 2, nome: "Ana", email: "ana@orbi.com", senha: "456" }
-];
 
-const varificarLogin = async (email, senha) => {
-    const usuarioEncontrado = usuariosNoBanco.find(u => u.email === email);
+
+const verificarLogin = async (email, senha) => {
+    const usuarioEncontrado = await prisma.tbl_usuarios.findFirst({
+        where: {
+            email_usuario: email
+        }
+    });
 
     if (!usuarioEncontrado) {
         return null; 
     }
 
-    if (usuarioEncontrado.senha !== senha) {
-        return null; 
+    const senhaValida = await bcrypt.compare(
+        senha,
+        usuarioEncontrado.senha_usuario
+    );
+
+    if (!senhaValida){
+        return null;
+    }
+
+    if (!process.env.JWT_SECRET) {
+        throw new Error("JWT não configurado");
     }
 
     const token = jwt.sign(
-        {id: usuarioEncontrado.id, email: usuarioEncontrado.email },
-        'minha_palavra_secreta',
-        {expiresIn: '1d'}
+        {
+            id: usuarioEncontrado.id_usuario,
+            email: usuarioEncontrado.email_usuario,
+            tipo: usuarioEncontrado.tipo_usuario,
+            instituicao: usuarioEncontrado.id_instituicao
+        },
+        process.env.JWT_SECRET,
+        {
+            expiresIn: '1d'
+        }
     );
 
     return {
-        id: usuarioEncontrado.id,
-        nome: usuarioEncontrado.nome,
-        email: usuarioEncontrado.email,
-        token: token
+        id: usuarioEncontrado.id_usuario,
+        nome: usuarioEncontrado.nome_usuario,
+        email: usuarioEncontrado.email_usuario,
+        tipo: usuarioEncontrado.tipo_usuario,
+        id_instituicao: usuarioEncontrado.id_instituicao,
+        token
     };
 };
 
 module.exports = {
-    varificarLogin
+    verificarLogin
 };
