@@ -1,9 +1,6 @@
 const prisma = require("../config/prisma");
 const bcrypt = require("bcryptjs");
-const jwt = require('jsonwebtoken');
-const { PrismaMariaDb } = require("@prisma/adapter-mariadb");
-
-
+const jwt = require("jsonwebtoken");
 
 const verificarLogin = async (email, senha) => {
     const usuarioEncontrado = await prisma.tbl_usuarios.findFirst({
@@ -12,8 +9,8 @@ const verificarLogin = async (email, senha) => {
         }
     });
 
-    if (!usuarioEncontrado) {
-        return null; 
+    if (!usuarioEncontrado || !usuarioEncontrado.status_usuario) {
+        return null;
     }
 
     const senhaValida = await bcrypt.compare(
@@ -21,7 +18,7 @@ const verificarLogin = async (email, senha) => {
         usuarioEncontrado.senha_usuario
     );
 
-    if (!senhaValida){
+    if (!senhaValida) {
         return null;
     }
 
@@ -38,7 +35,7 @@ const verificarLogin = async (email, senha) => {
         },
         process.env.JWT_SECRET,
         {
-            expiresIn: '1d'
+            expiresIn: "1d"
         }
     );
 
