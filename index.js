@@ -1,5 +1,4 @@
 require('dotenv').config();
-console.log('JWT_SECRET carregado:', !!process.env.JWT_SECRET);
 
 const express = require('express');
 const cors = require('cors');
@@ -12,8 +11,7 @@ app.use(express.json());
 
 const authController = require('./src/controllers/authcontroller');
 const studentsRoutes = require('./src/routes/studentsRoutes');
-
-app.use(express.json());
+const dashboardRoutes = require('./src/routes/dashboardRoutes');
 
 app.get('/', (req, res) => {
     res.send('Servidor Orbi API está online!');
@@ -21,6 +19,7 @@ app.get('/', (req, res) => {
 
 app.post('/login', authController.login);
 
+app.use('/api', dashboardRoutes);
 app.use('/api', studentsRoutes);
 
 app.listen(PORT, () => {
