@@ -1,8 +1,19 @@
 const prisma = require('../config/prisma');
 
 const List_student = async (req, res) => {
+    const idInstituicao = Number(req.usuario.instituicao);
+
+    if (!idInstituicao) {
+        return res.status(401).json({
+            erro: 'Instituição não identificada.'
+        });
+    }
+
     try {
         const students = await prisma.tbl_alunos.findMany({
+            where: {
+                id_instituicao: idInstituicao
+            },
             orderBy: {
                 nome_aluno: 'asc'
             }
