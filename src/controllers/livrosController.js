@@ -20,17 +20,29 @@ const listarLivros = async (req, res) => {
         } : {}),
         ...(categoria ? { id_categoria: Number(categoria) } : {})
       },
-      include: { tbl_categorias: { select: { id_categoria: true, nome_categoria: true } } },
+      include: {
+        tbl_categorias: { select: { id_categoria: true, nome_categoria: true } },
+        _count: {
+          select: {
+            tbl_emprestimos: {
+              where: { status_emprestimo: 'ATIVO' }
+            }
+          }
+        }
+      },
       orderBy: { titulo_livro: 'asc' }
     });
 
     const resultado = livros.map((livro) => {
+      const emprestimosAtivos = livro._count.tbl_emprestimos;
       const statusCalculado = !livro.status_livro
         ? 'Inativo'
-        : livro.quantidade_disponivel > 0
-          ? 'Disponível'
-          : 'Emprestado';
-      return { ...livro, status_exibicao: statusCalculado };
+        : emprestimosAtivos > 0
+          ? 'Emprestado'
+          : 'Disponível';
+
+      const { _count, ...dadosLivro } = livro;
+      return { ...dadosLivro, status_exibicao: statusCalculado };
     }).filter((livro) => !status || livro.status_exibicao.toLowerCase() === String(status).toLowerCase());
 
     return res.status(200).json(resultado);
@@ -58,13 +70,9 @@ const listarCategorias = async (req, res) => {
 const criarLivro = async (req, res) => {
   const idInstituicao = idInstituicaoDoUsuario(req);
   if (!idInstituicao) return res.status(401).json({ erro: 'Instituição não identificada.' });
-  const { titulo_livro, codigo_livro, autor_livro, isbn, id_categoria, quantidade_total } = req.body;
+  const { titulo_livro, codigo_livro, autor_livro, isbn, id_categoria } = req.body;
   if (!titulo_livro?.trim() || !codigo_livro?.trim()) {
     return res.status(400).json({ erro: 'Título e código do livro são obrigatórios.' });
-  }
-  const quantidade = Number(quantidade_total ?? 1);
-  if (!Number.isInteger(quantidade) || quantidade < 1) {
-    return res.status(400).json({ erro: 'A quantidade deve ser um número inteiro maior que zero.' });
   }
 
   try {
@@ -82,8 +90,6 @@ const criarLivro = async (req, res) => {
         isbn: isbn?.trim() || null,
         id_categoria: id_categoria ? Number(id_categoria) : null,
         id_instituicao: idInstituicao,
-        quantidade_total: quantidade,
-        quantidade_disponivel: quantidade,
         status_livro: true
       },
       include: { tbl_categorias: { select: { id_categoria: true, nome_categoria: true } } }
@@ -100,28 +106,36 @@ const atualizarLivro = async (req, res) => {
   const idInstituicao = idInstituicaoDoUsuario(req);
   const idLivro = Number(req.params.id);
   if (!idInstituicao) return res.status(401).json({ erro: 'Instituição não identificada.' });
-  if (!Number.isInteger(idLivro)) return res.status(400).json({ erro: 'Identificador de livro inválido.' });
+  if (!Number.isInteger(idLivro) || idLivro < 1) return res.status(400).json({ erro: 'Identificador de livro inválido.' });
 
   try {
     const existente = await prisma.tbl_livros.findFirst({ where: { id_livro: idLivro, id_instituicao: idInstituicao } });
     if (!existente) return res.status(404).json({ erro: 'Livro não encontrado.' });
 
-    const { titulo_livro, codigo_livro, autor_livro, isbn, id_categoria, quantidade_total, status_livro } = req.body;
+    const { titulo_livro, codigo_livro, autor_livro, isbn, id_categoria, status_livro } = req.body;
     const data = {};
-    if (titulo_livro !== undefined) data.titulo_livro = String(titulo_livro).trim();
-    if (codigo_livro !== undefined) data.codigo_livro = String(codigo_livro).trim();
+    if (titulo_livro !== undefined) {
+      if (!String(titulo_livro).trim()) return res.status(400).json({ erro: 'O título é obrigatório.' });
+      data.titulo_livro = String(titulo_livro).trim();
+    }
+    if (codigo_livro !== undefined) {
+      if (!String(codigo_livro).trim()) return res.status(400).json({ erro: 'O código é obrigatório.' });
+      data.codigo_livro = String(codigo_livro).trim();
+    }
     if (autor_livro !== undefined) data.autor_livro = String(autor_livro).trim() || null;
     if (isbn !== undefined) data.isbn = String(isbn).trim() || null;
-    if (id_categoria !== undefined) data.id_categoria = id_categoria ? Number(id_categoria) : null;
-    if (status_livro !== undefined) data.status_livro = Boolean(status_livro);
-    if (quantidade_total !== undefined) {
-      const total = Number(quantidade_total);
-      if (!Number.isInteger(total) || total < 1) return res.status(400).json({ erro: 'A quantidade deve ser maior que zero.' });
-      const emprestados = existente.quantidade_total - existente.quantidade_disponivel;
-      if (total < emprestados) return res.status(400).json({ erro: 'A quantidade não pode ser menor que os exemplares emprestados.' });
-      data.quantidade_total = total;
-      data.quantidade_disponivel = total - emprestados;
+    if (id_categoria !== undefined) {
+      if (id_categoria) {
+        const categoria = await prisma.tbl_categorias.findFirst({
+          where: { id_categoria: Number(id_categoria), id_instituicao: idInstituicao, status_categoria: true }
+        });
+        if (!categoria) return res.status(400).json({ erro: 'Categoria inválida para esta instituição.' });
+        data.id_categoria = Number(id_categoria);
+      } else {
+        data.id_categoria = null;
+      }
     }
+    if (status_livro !== undefined) data.status_livro = Boolean(status_livro);
 
     const livro = await prisma.tbl_livros.update({
       where: { id_livro: idLivro },
@@ -140,6 +154,7 @@ const excluirLivro = async (req, res) => {
   const idInstituicao = idInstituicaoDoUsuario(req);
   const idLivro = Number(req.params.id);
   if (!idInstituicao) return res.status(401).json({ erro: 'Instituição não identificada.' });
+  if (!Number.isInteger(idLivro) || idLivro < 1) return res.status(400).json({ erro: 'Identificador de livro inválido.' });
   try {
     const livro = await prisma.tbl_livros.findFirst({ where: { id_livro: idLivro, id_instituicao: idInstituicao } });
     if (!livro) return res.status(404).json({ erro: 'Livro não encontrado.' });
