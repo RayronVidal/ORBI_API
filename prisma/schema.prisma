@@ -65,20 +65,18 @@ model tbl_instituicao {
 }
 
 model tbl_livros {
-  id_livro              Int               @id @default(autoincrement())
-  titulo_livro          String            @db.VarChar(255)
-  codigo_livro          String            @db.VarChar(50)
-  autor_livro           String?           @db.VarChar(255)
-  isbn                  String?           @db.VarChar(20)
-  id_categoria          Int?
-  id_instituicao        Int
-  quantidade_total      Int               @default(1)
-  quantidade_disponivel Int               @default(1)
-  status_livro          Boolean           @default(true)
-  data_cadastro         DateTime          @default(now()) @db.DateTime(0)
-  tbl_emprestimos       tbl_emprestimos[]
-  tbl_categorias        tbl_categorias?   @relation(fields: [id_categoria], references: [id_categoria], map: "fk_livros_categoria")
-  tbl_instituicao       tbl_instituicao   @relation(fields: [id_instituicao], references: [id_instituicao], map: "fk_livros_instituicao")
+  id_livro        Int               @id @default(autoincrement())
+  titulo_livro    String            @db.VarChar(255)
+  codigo_livro    String            @db.VarChar(50)
+  autor_livro     String?           @db.VarChar(255)
+  isbn            String?           @db.VarChar(20)
+  id_categoria    Int?
+  id_instituicao  Int
+  status_livro    Boolean           @default(true)
+  data_cadastro   DateTime          @default(now()) @db.DateTime(0)
+  tbl_emprestimos tbl_emprestimos[]
+  tbl_categorias  tbl_categorias?   @relation(fields: [id_categoria], references: [id_categoria], map: "fk_livros_categoria")
+  tbl_instituicao tbl_instituicao   @relation(fields: [id_instituicao], references: [id_instituicao], map: "fk_livros_instituicao")
 
   @@unique([codigo_livro, id_instituicao], map: "uq_livro_codigo_instituicao")
   @@index([id_categoria], map: "fk_livros_categoria")
