@@ -56,7 +56,6 @@ const dashboard = async (req, res) => {
                     }
                 }),
 
-                // Empréstimos ativos de todos os professores da instituição.
                 prisma.tbl_emprestimos.count({
                     where: {
                         status_emprestimo: 'ATIVO',
@@ -66,7 +65,6 @@ const dashboard = async (req, res) => {
                     }
                 }),
 
-                // Atrasos de toda a instituição, independentemente de quem registrou o empréstimo.
                 prisma.tbl_emprestimos.count({
                     where: {
                         status_emprestimo: 'ATIVO',
@@ -79,17 +77,16 @@ const dashboard = async (req, res) => {
                     }
                 }),
 
-                prisma.tbl_livros.aggregate({
+                prisma.tbl_livros.count({
                     where: {
                         id_instituicao: idInstituicao,
-                        status_livro: true
-                    },
-                    _sum: {
-                        quantidade_disponivel: true
+                        status_livro: true,
+                        tbl_emprestimos: {
+                            none: { status_emprestimo: 'ATIVO' }
+                        }
                     }
                 }),
 
-                // Atividades recentes compartilhadas por todos os professores da instituição.
                 prisma.tbl_emprestimos.findMany({
                     where: {
                         tbl_alunos: {
@@ -176,7 +173,7 @@ const dashboard = async (req, res) => {
                 professores,
                 emprestimosAtivos,
                 atrasados,
-                livrosDisponiveis: livrosDisponiveis._sum.quantidade_disponivel || 0
+                livrosDisponiveis
             },
             atividadesRecentes: atividades
         });
